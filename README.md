@@ -1,4 +1,4 @@
-# 🤖 Intelligent Code Documentation Generator
+# 🤖 AutoDoc - Lmabda an Intelligent Code Documentation Generator
 
 > An AI-powered system that automatically generates comprehensive documentation for Python codebases using Claude API and AWS Lambda.
 
