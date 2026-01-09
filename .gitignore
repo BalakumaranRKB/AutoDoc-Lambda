@@ -1,0 +1,28 @@
+# Sensitive configuration files
+infrastructure/sam/samconfig-dev.toml
+**/samconfig-*.toml
+
+# Environment files
+.env
+.env.*
+
+# AWS credentials
+**/credentials
+**/config
+
+# Python
+__pycache__/
+*.py[cod]
+*~
+.pytest_cache/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+{
+  "body": "{\"file_path\": \"calculator.py\", \"file_content\": \"class Calculator:\\n    \\\"\\\"\\\"A simple calculator class.\\\"\\\"\\\"\\n    \\n    def __init__(self):\\n        self.result = 0\\n    \\n    def add(self, value):\\n        self.result += value\\n        return self.result\\n    \\n    def subtract(self, value):\\n        self.result -= value\\n        return self.result\\n    \\n    def reset(self):\\n        self.result = 0\\n        return self.result\"}",
+  "resource": "/document",
+  "path": "/document",
+  "httpMethod": "POST",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "test",
+    "stage": "dev",
+    "requestId": "test-request-id-2",
+    "identity": {
+      "sourceIp": "127.0.0.1"
+    },
+    "resourcePath": "/document",
+    "httpMethod": "POST"
+  },
+  "isBase64Encoded": false
+}

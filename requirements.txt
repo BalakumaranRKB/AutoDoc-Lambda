@@ -1,0 +1,26 @@
+# Core Dependencies
+anthropic==0.39.0              # Claude API client
+pydantic==2.9.2                # Data validation
+python-dotenv==1.0.1           # Environment variables
+
+# AWS SDK
+boto3==1.35.36                 # AWS SDK for Python
+botocore==1.35.36              # AWS SDK core
+
+# Code Analysis
+ast-comments==1.2.2            # Enhanced AST parsing
+astunparse==1.6.3              # Convert AST back to Python
+
+# Token Counting
+tiktoken==0.8.0                # Token counting for OpenAI models
+anthropic-tokenizer==0.0.1     # Token counting for Claude (custom)
+
+# Utilities
+requests==2.32.3               # HTTP library
+tenacity==9.0.0                # Retry logic
+cachetools==5.5.0              # In-memory caching
+hashlib-extra==0.0.1           # Additional hash functions
+
+# Monitoring & Logging
+python-json-logger==3.1.0      # JSON logging
+aws-xray-sdk==2.14.0           # AWS X-Ray tracing

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Documentation Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 400px;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .output {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+            min-height: 400px;
+            overflow-y: auto;
+            line-height: 1.8;
+        }
+
+        .output.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-style: italic;
+        }
+
+        .markdown-body {
+            color: #333;
+        }
+
+        .markdown-body h1 {
+            color: #667eea;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-size: 1.8rem;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        .markdown-body h2 {
+            color: #764ba2;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+
+        .markdown-body h3 {
+            color: #555;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+        }
+
+        .markdown-body p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-body code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+
+        .markdown-body pre {
+            background: #2d2d2d;
+            color: #f8f8f8;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            margin-left: 24px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-body li {
+            margin-bottom: 6px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .config-section code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .example-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Code Documentation Generator</h1>
+            <p>Transform your Python code into comprehensive documentation using Claude AI</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Input Panel -->
+            <div class="panel">
+                <h2>📝 Input Code</h2>
+                
+                <div class="config-section">
+                    <strong>API Endpoint:</strong> <code id="apiEndpoint">Not configured</code>
+                    <button onclick="configureEndpoint()" style="margin-left: 8px; padding: 4px 8px; font-size: 11px; background: #667eea; color: white; border: none; border-radius: 3px; cursor: pointer;">Configure</button>
+                </div>
+
+                <div class="example-buttons">
+                    <button class="example-btn" onclick="loadExample('simple')">Simple Function</button>
+                    <button class="example-btn" onclick="loadExample('class')">Class Example</button>
+                    <button class="example-btn" onclick="loadExample('complex')">Complex Code</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="filename">Filename</label>
+                    <input 
+                        type="text" 
+                        id="filename" 
+                        placeholder="example.py" 
+                        value="example.py"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="code">Python Code</label>
+                    <textarea 
+                        id="code" 
+                        placeholder="Paste your Python code here..."
+                    >def calculate_total(items):
+    """Calculate the total price of items."""
+    total = 0
+    for item in items:
+        total += item.price
+    return total</textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="generateDocs()" id="generateBtn">
+                        ✨ Generate Documentation
+                    </button>
+                    <button class="btn-secondary" onclick="clearAll()">
+                        🗑️ Clear
+                    </button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>Analyzing code and generating documentation...</div>
+                </div>
+
+                <div class="error" id="error"></div>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel">
+                <h2>📄 Generated Documentation</h2>
+                
+                <div id="stats" style="display: none;">
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="costValue">-</div>
+                            <div class="stat-label">Cost (USD)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="tokensValue">-</div>
+                            <div class="stat-label">Tokens</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="timeValue">-</div>
+                            <div class="stat-label">Time (s)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="output empty" id="output">
+                    Click "Generate Documentation" to see the magic happen! ✨
+                </div>
+
+                <div class="button-group" style="margin-top: 16px; display: none;" id="outputActions">
+                    <button class="btn-secondary" onclick="copyToClipboard()">
+                        📋 Copy to Clipboard
+                    </button>
+                    <button class="btn-secondary" onclick="downloadDocs()">
+                        💾 Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        // Configuration
+        let API_ENDPOINT = localStorage.getItem('apiEndpoint') || '';
+        
+        // Update display
+        if (API_ENDPOINT) {
+            document.getElementById('apiEndpoint').textContent = API_ENDPOINT;
+        }
+
+        function configureEndpoint() {
+            const endpoint = prompt('Enter your API Gateway endpoint URL:', API_ENDPOINT);
+            if (endpoint) {
+                API_ENDPOINT = endpoint.trim();
+                localStorage.setItem('apiEndpoint', API_ENDPOINT);
+                document.getElementById('apiEndpoint').textContent = API_ENDPOINT;
+                showMessage('API endpoint configured!', 'success');
+            }
+        }
+
+        // Example code snippets
+        const examples = {
+            simple: {
+                filename: 'calculator.py',
+                code: `def add(a, b):
+    """Add two numbers."""
+    return a + b
+
+def multiply(a, b):
+    """Multiply two numbers."""
+    return a * b`
+            },
+            class: {
+                filename: 'user.py',
+                code: `class User:
+    """Represents a user in the system."""
+    
+    def __init__(self, name, email):
+        self.name = name
+        self.email = email
+        self.is_active = True
+    
+    def deactivate(self):
+        """Deactivate the user account."""
+        self.is_active = False
+    
+    def send_email(self, subject, message):
+        """Send an email to the user."""
+        print(f"Sending to {self.email}: {subject}")`
+            },
+            complex: {
+                filename: 'data_processor.py',
+                code: `import json
+from typing import List, Dict, Any
+
+class DataProcessor:
+    """Process and transform data from various sources."""
+    
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.cache = {}
+    
+    def process_records(self, records: List[Dict]) -> List[Dict]:
+        """
+        Process a list of records and apply transformations.
+        
+        Args:
+            records: List of dictionaries containing record data
+            
+        Returns:
+            List of processed records
+        """
+        processed = []
+        for record in records:
+            if self._validate_record(record):
+                transformed = self._transform_record(record)
+                processed.append(transformed)
+        return processed
+    
+    def _validate_record(self, record: Dict) -> bool:
+        """Validate a single record."""
+        required_fields = self.config.get('required_fields', [])
+        return all(field in record for field in required_fields)
+    
+    def _transform_record(self, record: Dict) -> Dict:
+        """Apply transformations to a record."""
+        # Transformation logic here
+        return record`
+            }
+        };
+
+        function loadExample(type) {
+            const example = examples[type];
+            document.getElementById('filename').value = example.filename;
+            document.getElementById('code').value = example.code;
+        }
+
+        async function generateDocs() {
+            if (!API_ENDPOINT) {
+                showError('Please configure your API endpoint first!');
+                return;
+            }
+
+            const filename = document.getElementById('filename').value.trim();
+            const code = document.getElementById('code').value.trim();
+
+            if (!filename || !code) {
+                showError('Please provide both filename and code!');
+                return;
+            }
+
+            // UI updates
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('output').classList.add('empty');
+            document.getElementById('output').innerHTML = 'Generating documentation...';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('outputActions').style.display = 'none';
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        file_path: filename,
+                        file_content: code
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data.status === 'completed') {
+                    displayDocumentation(data.data);
+                } else {
+                    showError(data.data.error_message || data.error || 'Failed to generate documentation');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function displayDocumentation(data) {
+            const output = document.getElementById('output');
+            output.classList.remove('empty');
+            
+            // Render markdown
+            const html = marked.parse(data.documentation);
+            output.innerHTML = `<div class="markdown-body">${html}</div>`;
+
+            // Update stats
+            document.getElementById('costValue').textContent = `$${data.total_cost.toFixed(4)}`;
+            document.getElementById('tokensValue').textContent = data.total_tokens.toLocaleString();
+            document.getElementById('timeValue').textContent = data.processing_time_seconds.toFixed(2);
+            document.getElementById('stats').style.display = 'block';
+            document.getElementById('outputActions').style.display = 'flex';
+
+            // Store for download
+            window.currentDocs = data.documentation;
+            window.currentFilename = data.file_path;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+        }
+
+        function showMessage(message, type) {
+            alert(message);
+        }
+
+        function clearAll() {
+            document.getElementById('filename').value = 'example.py';
+            document.getElementById('code').value = '';
+            document.getElementById('output').classList.add('empty');
+            document.getElementById('output').innerHTML = 'Click "Generate Documentation" to see the magic happen! ✨';
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('outputActions').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            if (window.currentDocs) {
+                navigator.clipboard.writeText(window.currentDocs);
+                showMessage('Documentation copied to clipboard!', 'success');
+            }
+        }
+
+        function downloadDocs() {
+            if (window.currentDocs && window.currentFilename) {
+                const blob = new Blob([window.currentDocs], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = window.currentFilename.replace('.py', '_docs.md');
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // Keyboard shortcut: Ctrl/Cmd + Enter to generate
+        document.getElementById('code').addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                generateDocs();
+            }
+        });
+    </script>
+</body>
+</html>

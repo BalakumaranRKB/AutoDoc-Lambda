@@ -1,0 +1,53 @@
+graph TB
+    subgraph "Client Layer"
+        Client[Client Application<br/>Web/CLI/GitHub Action]
+    end
+
+    subgraph "AWS Cloud"
+        subgraph "API Layer"
+            APIGW[API Gateway<br/>REST API<br/>POST /document]
+        end
+
+        subgraph "Compute Layer"
+            Lambda[AWS Lambda Function<br/>512 MB / 5 min timeout<br/>Python 3.9]
+        end
+
+        subgraph "Application Layer"
+            Handler[Lambda Handler<br/>Orchestration]
+            Analyzer[PythonCodeAnalyzer<br/>AST Parsing]
+            ClaudeClient[ClaudeClient<br/>API Integration]
+            CostTracker[CostTracker<br/>Metrics Aggregation]
+        end
+
+        subgraph "Logging"
+            CloudWatch[CloudWatch Logs<br/>Request Logging<br/>Error Tracking]
+        end
+    end
+
+    subgraph "External Services"
+        Anthropic[Anthropic Claude API<br/>claude-sonnet-4-20250514<br/>Documentation Generation]
+    end
+
+    Client -->|HTTP POST<br/>JSON payload| APIGW
+    APIGW -->|Lambda Proxy<br/>Integration| Lambda
+    Lambda --> Handler
+    Handler -->|1. Analyze Code| Analyzer
+    Handler -->|2. Generate Docs| ClaudeClient
+    Handler -->|3. Track Cost| CostTracker
+    ClaudeClient -->|API Request<br/>Prompt + Code| Anthropic
+    Anthropic -->|Response<br/>Documentation + Tokens| ClaudeClient
+    Handler -->|Logs| CloudWatch
+    Lambda -->|HTTP Response<br/>JSON| APIGW
+    APIGW -->|JSON Response| Client
+
+    style Client fill:#e1f5ff
+    style APIGW fill:#fff4e1
+    style Lambda fill:#ffe1f5
+    style Anthropic fill:#e1ffe1
+    style CloudWatch fill:#f0f0f0
+
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef external fill:#4CAF50,stroke:#1B5E20,stroke-width:2px,color:#fff
+    
+    class APIGW,Lambda,CloudWatch aws
+    class Anthropic external

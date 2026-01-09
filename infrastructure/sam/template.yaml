@@ -1,0 +1,217 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Intelligent Code Documentation Generator - Phase 1 POC
+  
+  Simple serverless application that generates documentation for Python code
+  using Claude API. This is the POC version without caching, chunking, or
+  advanced error handling.
+
+# Global configurations that apply to all resources
+Globals:
+  Function:
+    Timeout: 300  # 5 minutes - max for Phase 1
+    MemorySize: 512  # MB - enough for AST parsing
+    Runtime: python3.9
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        CLAUDE_MODEL: claude-sonnet-4-20250514
+        MAX_TOKENS: 4096
+        TEMPERATURE: 0.0
+    Tags:
+      Project: IntelligentCodeDocGenerator
+      Phase: Phase1-POC
+      ManagedBy: SAM
+
+# Parameters allow customization without modifying the template
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    Description: Your Anthropic API key for Claude
+    NoEcho: true  # Hides the value in console/logs
+    
+  CostPerMillionInputTokens:
+    Type: Number
+    Description: Cost per 1M input tokens in USD
+    Default: 3.00
+    
+  CostPerMillionOutputTokens:
+    Type: Number
+    Description: Cost per 1M output tokens in USD
+    Default: 15.00
+    
+  Environment:
+    Type: String
+    Description: Environment name (dev, staging, prod)
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+# Main resources
+Resources:
+  # Lambda function for documentation generation
+  DocumentationGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'doc-generator-${Environment}'
+      Description: Generates documentation for Python code using Claude API
+      CodeUri: ../../src/phase1_poc/
+      Handler: lambda_function.lambda_handler
+      
+      # Environment variables specific to this function
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          COST_PER_1M_INPUT_TOKENS: !Ref CostPerMillionInputTokens
+          COST_PER_1M_OUTPUT_TOKENS: !Ref CostPerMillionOutputTokens
+          ENVIRONMENT: !Ref Environment
+      
+      # API Gateway event trigger
+      Events:
+        DocumentApi:
+          Type: Api
+          Properties:
+            Path: /document
+            Method: POST
+            RestApiId: !Ref DocumentationApi
+      
+      # IAM role policies
+      Policies:
+        - CloudWatchLogsFullAccess
+        - Statement:
+          - Sid: AllowCloudWatchMetrics
+            Effect: Allow
+            Action:
+              - cloudwatch:PutMetricData
+            Resource: '*'
+  
+  # API Gateway REST API
+  DocumentationApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'doc-generator-api-${Environment}'
+      StageName: !Ref Environment
+      Description: REST API for code documentation generation
+      
+      # CORS configuration for web clients
+      Cors:
+        AllowMethods: "'POST, OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"  # In production, restrict to specific domains
+        MaxAge: "'600'"
+      
+      # API Gateway configuration
+      EndpointConfiguration:
+        Type: REGIONAL
+      
+      # Throttling to prevent abuse
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          ThrottlingBurstLimit: 100
+          ThrottlingRateLimit: 50
+          LoggingLevel: INFO  # Still log to CloudWatch, just not access logs
+      
+      # NOTE: AccessLogSetting removed to avoid CloudWatch role requirement
+      # You can add it back after setting up the CloudWatch role (see TROUBLESHOOTING.md)
+      
+      Tags:
+        Environment: !Ref Environment
+        Project: IntelligentCodeDocGenerator
+  
+  # CloudWatch Log Group for Lambda function
+  FunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/doc-generator-${Environment}'
+      RetentionInDays: 7
+
+  # CloudWatch Dashboard for monitoring
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'doc-generator-${Environment}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", { "stat": "Sum", "label": "Total Requests" } ],
+                  [ ".", "Errors", { "stat": "Sum", "label": "Errors" } ],
+                  [ ".", "Throttles", { "stat": "Sum", "label": "Throttles" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Lambda Metrics",
+                "period": 300,
+                "dimensions": {
+                  "FunctionName": "${DocumentationGeneratorFunction}"
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", { "stat": "Average", "label": "Avg Duration" } ],
+                  [ "...", { "stat": "Maximum", "label": "Max Duration" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Performance",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Milliseconds"
+                  }
+                },
+                "dimensions": {
+                  "FunctionName": "${DocumentationGeneratorFunction}"
+                }
+              }
+            }
+          ]
+        }
+
+# Outputs to display after deployment
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${DocumentationApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/document"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiEndpoint"
+  
+  FunctionArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt DocumentationGeneratorFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionArn"
+  
+  FunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref DocumentationGeneratorFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionName"
+  
+  ApiId:
+    Description: "API Gateway ID"
+    Value: !Ref DocumentationApi
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiId"
+  
+  DashboardURL:
+    Description: "CloudWatch Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=doc-generator-${Environment}"
+  
+  LogGroupName:
+    Description: "CloudWatch Log Group for Lambda"
+    Value: !Ref FunctionLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroup"

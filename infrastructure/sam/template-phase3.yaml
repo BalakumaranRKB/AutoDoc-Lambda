@@ -1,0 +1,260 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Intelligent Code Documentation Generator - Phase 3 Production
+  
+  Production-ready serverless application with:
+  - DynamoDB caching (90% cost reduction)
+  - Enhanced monitoring
+  - Proper IAM permissions
+
+# Global configurations
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.11
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        CLAUDE_MODEL: claude-sonnet-4-20250514
+        MAX_TOKENS: 4096
+        TEMPERATURE: 0.0
+    Tags:
+      Project: IntelligentCodeDocGenerator
+      Phase: Phase3-Production
+      ManagedBy: SAM
+
+# Parameters
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    Description: Your Anthropic API key for Claude
+    NoEcho: true
+    
+  CostPerMillionInputTokens:
+    Type: Number
+    Description: Cost per 1M input tokens in USD
+    Default: 3.00
+    
+  CostPerMillionOutputTokens:
+    Type: Number
+    Description: Cost per 1M output tokens in USD
+    Default: 15.00
+    
+  Environment:
+    Type: String
+    Description: Environment name (dev, staging, prod)
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+  
+  CacheTTLHours:
+    Type: Number
+    Description: Cache TTL in hours
+    Default: 24
+
+# Resources
+Resources:
+  # DynamoDB Table for Caching
+  DocumentationCache:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'doc-cache-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: file_hash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: file_hash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: DocumentationCache
+
+  # Lambda function with caching
+  DocumentationGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'doc-generator-phase3-${Environment}'
+      Description: Phase 3 - Generates documentation with caching
+      CodeUri: ../../src/phase3_production/
+      Handler: lambda_function.lambda_handler
+      
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          COST_PER_1M_INPUT_TOKENS: !Ref CostPerMillionInputTokens
+          COST_PER_1M_OUTPUT_TOKENS: !Ref CostPerMillionOutputTokens
+          ENVIRONMENT: !Ref Environment
+          CACHE_TABLE_NAME: !Ref DocumentationCache
+          CACHE_TTL_HOURS: !Ref CacheTTLHours
+      
+      Events:
+        DocumentApi:
+          Type: Api
+          Properties:
+            Path: /document
+            Method: POST
+            RestApiId: !Ref DocumentationApi
+      
+      Policies:
+        - CloudWatchLogsFullAccess
+        - Statement:
+          - Sid: AllowCloudWatchMetrics
+            Effect: Allow
+            Action:
+              - cloudwatch:PutMetricData
+            Resource: '*'
+        - Statement:
+          - Sid: AllowDynamoDBAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource: !GetAtt DocumentationCache.Arn
+
+  # API Gateway - SIMPLIFIED (removed MethodSettings that was causing issues)
+  DocumentationApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub 'doc-generator-api-phase3-${Environment}'
+      StageName: !Ref Environment
+      Description: Phase 3 REST API with caching
+      
+      Cors:
+        AllowMethods: "'POST, OPTIONS, GET'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      
+      EndpointConfiguration:
+        Type: REGIONAL
+      
+      Tags:
+        Environment: !Ref Environment
+        Project: IntelligentCodeDocGenerator
+        Phase: Phase3
+
+  # CloudWatch Log Group
+  FunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/doc-generator-phase3-${Environment}'
+      RetentionInDays: 7
+
+  # Enhanced CloudWatch Dashboard
+  MonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'doc-generator-phase3-${Environment}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", { "stat": "Sum", "label": "Total Requests" } ],
+                  [ ".", "Errors", { "stat": "Sum", "label": "Errors" } ],
+                  [ ".", "Throttles", { "stat": "Sum", "label": "Throttles" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Lambda Metrics",
+                "period": 300,
+                "dimensions": {
+                  "FunctionName": "${DocumentationGeneratorFunction}"
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", { "stat": "Average", "label": "Avg Duration" } ],
+                  [ "...", { "stat": "Maximum", "label": "Max Duration" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Performance",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Milliseconds"
+                  }
+                },
+                "dimensions": {
+                  "FunctionName": "${DocumentationGeneratorFunction}"
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", { "stat": "Sum" } ],
+                  [ ".", "ConsumedWriteCapacityUnits", { "stat": "Sum" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "DynamoDB Usage",
+                "period": 300,
+                "dimensions": {
+                  "TableName": "${DocumentationCache}"
+                }
+              }
+            }
+          ]
+        }
+
+# Outputs
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for Phase 3"
+    Value: !Sub "https://${DocumentationApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/document"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiEndpoint"
+  
+  FunctionArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt DocumentationGeneratorFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionArn"
+  
+  FunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref DocumentationGeneratorFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionName"
+  
+  CacheTableName:
+    Description: "DynamoDB Cache Table Name"
+    Value: !Ref DocumentationCache
+    Export:
+      Name: !Sub "${AWS::StackName}-CacheTable"
+  
+  DashboardURL:
+    Description: "CloudWatch Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=doc-generator-phase3-${Environment}"
+  
+  LogGroupName:
+    Description: "CloudWatch Log Group for Lambda"
+    Value: !Ref FunctionLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroup"

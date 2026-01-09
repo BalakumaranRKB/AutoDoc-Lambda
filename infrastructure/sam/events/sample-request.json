@@ -1,0 +1,25 @@
+{
+  "body": "{\"file_path\": \"example.py\", \"file_content\": \"def add(a, b):\\n    \\\"\\\"\\\"Add two numbers.\\\"\\\"\\\"\\n    return a + b\\n\\ndef subtract(a, b):\\n    \\\"\\\"\\\"Subtract b from a.\\\"\\\"\\\"\\n    return a - b\\n\\ndef multiply(a, b):\\n    \\\"\\\"\\\"Multiply two numbers.\\\"\\\"\\\"\\n    return a * b\\n\\ndef divide(a, b):\\n    \\\"\\\"\\\"Divide a by b.\\\"\\\"\\\"\\n    if b == 0:\\n        raise ValueError('Cannot divide by zero')\\n    return a / b\"}",
+  "resource": "/document",
+  "path": "/document",
+  "httpMethod": "POST",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "test",
+    "stage": "dev",
+    "requestId": "test-request-id",
+    "identity": {
+      "sourceIp": "127.0.0.1"
+    },
+    "resourcePath": "/document",
+    "httpMethod": "POST"
+  },
+  "isBase64Encoded": false
+}

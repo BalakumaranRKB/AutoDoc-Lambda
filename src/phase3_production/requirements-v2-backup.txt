@@ -1,0 +1,5 @@
+anthropic
+pydantic
+pydantic-core
+boto3
+typing-extensions
